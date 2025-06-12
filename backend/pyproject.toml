@@ -17,6 +17,8 @@ langchain-openai = "^0.2.8"
 langgraph = "^0.2.46"
 python-dotenv = "^1.0.1"
 assistant-stream = "^0.0.5"
+redis = "^6.2.0"
+langchain-community = "^0.3.25"
 
 
 [tool.poetry.group.dev.dependencies]

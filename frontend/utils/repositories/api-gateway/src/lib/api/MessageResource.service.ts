@@ -17,7 +17,7 @@ import { Observable } from 'rxjs';
 
 import { ApiResourceService } from './apiResourceService';
 import { TikTokCommentRs } from '../model/tiktok/tiktokCommentRs';
-import { SendMessageRequest } from '../model/message/sendMessageRq';
+import { SendMessageRequest, SendMessageResponse } from '../model/message/sendMessageRq';
 
 
 @Injectable({
@@ -34,7 +34,7 @@ export class MessageResourceService extends ApiResourceService {
   public sendMessage(messageRs: SendMessageRequest, observe?: 'body', reportProgress?: boolean): Observable<any>;
   public sendMessage(messageRs: SendMessageRequest, observe?: 'response', reportProgress?: boolean): Observable<HttpResponse<any>>;
   public sendMessage(messageRs: SendMessageRequest, observe?: 'events', reportProgress?: boolean): Observable<HttpEvent<any>>;
-  public sendMessage(messageRs: SendMessageRequest, observe: any = 'body', reportProgress?: boolean): Observable<any> {
+  public sendMessage(messageRs: SendMessageRequest, observe: any = 'events', reportProgress?: boolean): Observable<any> {
     let headers = this.defaultHeaders;
     return this.httpClient.request<any>('post', `${this.basePath}/api/chat`, {
       body: messageRs,
@@ -44,6 +44,55 @@ export class MessageResourceService extends ApiResourceService {
       reportProgress: reportProgress
     });
   }
+
+
+  public sendMessageStream(messageRs: SendMessageRequest): Observable<SendMessageResponse> {
+    return new Observable<SendMessageResponse>(subscriber => {
+      fetch(`${this.basePath}/api/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(messageRs),
+        credentials: this.configuration.withCredentials ? 'include' : 'same-origin',
+      }).then(response => {
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let fullText = '';
+
+        const read = () => {
+          reader!.read().then(({ value, done }) => {
+            if (done) {
+              subscriber.complete();
+              return;
+            }
+
+            const chunk = decoder.decode(value, { stream: true });
+            fullText += chunk;
+
+            // Emit realtime response mỗi lần có update
+            const response: SendMessageResponse = {
+              answer: {
+                role: 'assistant',
+                content: [
+                  {
+                    type: 'text',
+                    text: fullText
+                  }
+                ]
+              }
+            };
+
+            subscriber.next(response);
+            read();
+          }).catch(err => subscriber.error(err));
+        };
+
+        read();
+      }).catch(err => subscriber.error(err));
+    });
+  }
+
 
   public fetchHistory(
     payload: { session_id: string; user_id: string, agent: string },

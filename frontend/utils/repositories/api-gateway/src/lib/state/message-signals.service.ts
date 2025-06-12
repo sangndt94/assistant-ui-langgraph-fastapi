@@ -1,10 +1,10 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
-import { catchError, of, tap } from 'rxjs';
+import { catchError, Observable, of, tap } from 'rxjs';
 import { ApiStatus } from '../model/api-status.model';
 import { TikTokCommentRs } from '../model/tiktok/tiktokCommentRs';
 import { TikTokScraperRq } from '../model/tiktok/tiktokScraperRq';
 import { MessageResourceService } from '../api/MessageResource.service';
-import { ChatMessage, MessageContent, SendMessageRequest } from '../model/message/sendMessageRq';
+import { ChatMessage, MessageContent, SendMessageRequest, SendMessageResponse } from '../model/message/sendMessageRq';
 import { Router } from '@angular/router';
 
 @Injectable({
@@ -15,7 +15,7 @@ export class MessageSignalsService {
   readonly isLoading = computed(() => this.#status() === 'loading');
 
   readonly #eventMessageResourceService = inject(MessageResourceService);
-  readonly #messageRs = signal<TikTokCommentRs | undefined>(undefined);
+  readonly #messageRs = signal<any | undefined>(undefined);
   readonly message = computed(() => this.#messageRs());
   readonly #router = inject(Router);
   readonly #activeSessionId = signal<string | null>(null);
@@ -94,6 +94,7 @@ export class MessageSignalsService {
 
     return this.#eventMessageResourceService.sendMessage(sendMessageRs).pipe(
       tap((response) => {
+        console.log("response", response)
         // Giả sử BE trả về { answer: { role: string, content: MessageContent[] } }
         const answer = response.answer || {
           role: 'assistant' as const,
@@ -129,6 +130,48 @@ export class MessageSignalsService {
         this.#history.set(failedHistory);
         this.#status.set('error');
         return of(err.error?.data || err.error);
+      })
+    );
+  }
+
+  sendMessageStream(sendMessageRs: SendMessageRequest): Observable<SendMessageResponse> {
+    this.#status.set('loading');
+
+    return this.#eventMessageResourceService.sendMessageStream(sendMessageRs).pipe(
+      tap((response: SendMessageResponse) => {
+        console.log("response", response);
+
+        const answer = response.answer || {
+          role: 'assistant' as const,
+          content: [{ type: 'text' as const, text: '' }]
+        };
+
+        const toolCall = answer.content.find(item => item.type === 'tool-call');
+        if (toolCall) {
+          this.handleToolCall(toolCall, sendMessageRs);
+        } else {
+          const updatedHistory: ChatMessage[] = [
+            ...sendMessageRs.messages,
+            answer
+          ];
+          this.#history.set(updatedHistory);
+        }
+
+        this.#status.set('success');
+        this.#messageRs.set(response);
+      }),
+      catchError((err) => {
+        const failedHistory: ChatMessage[] = [
+          ...sendMessageRs.messages,
+          {
+            role: 'assistant',
+            content: [{ type: 'text', text: '⚠️ Gửi tin nhắn thất bại.' }]
+          }
+        ];
+        this.#history.set(failedHistory);
+        this.#status.set('error');
+
+        return of(err.error?.data || err.error || { error: true });
       })
     );
   }

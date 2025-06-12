@@ -31,3 +31,8 @@ export interface SendMessageRequest {
   session_id?: string; // Giữ lại nếu BE cần
   agent?: string; // Giữ lại nếu BE cần
 }
+
+export interface SendMessageResponse {
+  answer: ChatMessage;
+  [key: string]: any; // nếu có thêm field khác
+}

@@ -109,7 +109,7 @@ export class HomeComponent {
 
     // Gửi tin nhắn
     this.messageSignalsService
-      .sendMessage(payload)
+      .sendMessageStream(payload)
       .subscribe({
         next: () => {
           this.onMessageSent();

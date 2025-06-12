@@ -1,0 +1,40 @@
+<div #scrollContainer class="chat-history space-y-4 p-4 overflow-y-auto h-[70vh]">
+  <div *ngFor="let message of history(); let i = index" class="mb-1">
+    <!-- User Message -->
+    <div *ngIf="message.role === 'user'" class="flex justify-end">
+      <div class="bg-blue-500 text-white rounded-xl px-4 py-2 max-w-[80%] text-right">
+        {{ getMessageText(message.content) }}
+      </div>
+    </div>
+
+    <!-- Assistant Message -->
+    <div *ngIf="message.role === 'assistant'" class="flex justify-start">
+      <div class="bg-gray-100 text-gray-800 rounded-xl px-4 py-2 max-w-[80%] whitespace-pre-line">
+        <ng-container *ngIf="getMessageText(message.content) === '🤖 Đang trả lời...'; else realAnswer">
+          🤖
+          <span class="inline-flex gap-1">
+            <span class="animate-bounce">.</span>
+            <span class="animate-bounce [animation-delay:0.2s]">.</span>
+            <span class="animate-bounce [animation-delay:0.4s]">.</span>
+          </span>
+        </ng-container>
+        <ng-template #realAnswer>
+          <span [innerHTML]="parseSimpleMarkdown(getMessageText(message.content))"></span>
+        </ng-template>
+      </div>
+    </div>
+
+    <!-- Tool Result -->
+    <div *ngIf="message.role === 'tool'" class="flex justify-start">
+      <div class="bg-gray-200 text-gray-600 rounded-xl px-4 py-2 max-w-[80%]">
+        <ng-container *ngIf="message.content[0] && message.content[0].type === 'tool-result'; else noToolResult">
+          [Tool Result: {{ message.content[0].toolName || 'Unknown' }}]
+          <pre>{{ message.content[0].result | json }}</pre>
+        </ng-container>
+        <ng-template #noToolResult>
+          [Invalid Tool Result]
+        </ng-template>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,36 @@
+<div class="p-5 bg-white h-full">
+    <div nz-form [formGroup]="formGroup" class="space-y-5">
+        <div>
+            <div>
+                <nz-form-label nzRequired>Type</nz-form-label>
+            </div>
+            <div>
+                <nz-form-control nzErrorTip="Please input your type!">
+                    <nz-select formControlName="type" placeholder="type">
+                        <nz-option nzValue="TIKTOK" nzLabel="Tiktok"></nz-option>
+                        <nz-option nzValue="SHOPEE" nzLabel="Shopee" [nzDisabled]="true"></nz-option>
+                    </nz-select>
+                </nz-form-control>
+            </div>
+        </div>
+        <div>
+            <div>
+                <nz-form-label nzRequired>Label</nz-form-label>
+            </div>
+            <nz-form-control nzErrorTip="Please input your label!">
+                <input nz-input formControlName="label" placeholder="label" />
+            </nz-form-control>
+        </div>
+        <div>
+            <nz-form-label nzRequired>Link</nz-form-label>
+            <nz-form-control nzErrorTip="Please input your link!">
+                <input nz-input formControlName="link" placeholder="link" />
+            </nz-form-control>
+        </div>
+        <div>
+            <button nz-button nzType="primary">
+                Tạo mới
+            </button>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,137 @@
+<nz-layout class="h-full">
+    <nz-sider class="!max-w-none !w-auto !flex-none !min-w-96" nzTheme="light" nzCollapsible
+        [(nzCollapsed)]="isCollapsed" [nzTrigger]="null">
+        <div class="flex h-full">
+            <div class="bg-[rgba(112,110,162,0.1)]">
+                <div class="grid h-full place-content-between">
+                    <div class="p-2">
+                        <ul class="space-y-2">
+                            <li class="active">
+                                <button class="w-14 h-10 rounded" nz-button nzType="text">
+                                    <nz-icon class="text-lg" nzType="message" nzTheme="outline" />
+                                </button>
+                            </li>
+                            <li>
+                                <button class="w-14 h-10 rounded text-neutral-400" nz-button nzType="text">
+                                    <nz-icon class="text-lg" nzType="shop" nzTheme="outline" />
+                                </button>
+                            </li>
+                            <li>
+                                <button class="w-14 h-10 rounded text-neutral-400" nz-button nzType="text">
+                                    <nz-icon nzType="delete" nzTheme="outline" />
+                                </button>
+                            </li>
+                            <li>
+                                <button class="w-14 h-10 rounded text-neutral-400" nz-button nzType="text">
+                                    <nz-icon nzType="setting" nzTheme="outline" />
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="p-3 bg-neutral-200 grid place-content-center">
+                        <div class="cursor-pointer rounded-full border">
+                            <nz-avatar nzIcon="user"
+                                nzSrc="//zos.alipayobjects.com/rmsportal/ODTLcjxAfvqbxHnVXCYX.png"></nz-avatar>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="w-full border-r">
+                <div class="nav-heading">
+                    <div class="name p-3 space-y-4">
+                        <div class="flex place-content-between place-items-center px-1">
+                            <div class="font-bold text-xl">Chats</div>
+                            <div>
+                                <button (click)="newChat()" nz-button nzType="text">
+                                    <nz-icon nzType="edit" nzTheme="outline" />
+                                </button>
+                            </div>
+                        </div>
+                        <div class="">
+                            <nz-form-control nzErrorTip="Please input your username!">
+                                <nz-input-group class="border-none bg-neutral-100 h-10 rounded" nzPrefixIcon="search">
+                                    <input class="bg-neutral-100" type="text" nz-input placeholder="Search (⌘K)" />
+                                </nz-input-group>
+                            </nz-form-control>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="histories">
+                    <ul>
+                        <!-- Hôm nay -->
+                        <li class="p-3 space-y-2" *ngIf="this.messageSignalsService.sessionGroups().today.length > 0">
+                            <div class="px-2 text-sm text-neutral-500">Hôm nay</div>
+                            <ul class="space-y-1">
+                                <li *ngFor="let s of this.messageSignalsService.sessionGroups().today"
+                                    class="p-2 cursor-pointer rounded-lg hover:bg-neutral-100 flex items-center justify-between gap-2"
+                                    [ngClass]="{ 'bg-blue-100 text-blue-600': s.sessionId === messageSignalsService.activeSessionId() }">
+
+                                    <span class="truncate max-w-[180px] block" title="{{ s.label }}"
+                                        (click)="messageSignalsService.setActiveSession(s.sessionId)">
+                                        {{ s.label }}
+                                    </span>
+
+                                    <button nz-button nzType="text"
+                                        (click)="messageSignalsService.deleteSession(s.sessionId, $event)">
+                                        <nz-icon nzType="delete" nzTheme="outline"
+                                            class="text-neutral-400 hover:text-red-500" />
+                                    </button>
+                                </li>
+                            </ul>
+                        </li>
+
+                        <!-- 7 ngày qua -->
+                        <li class="p-3 space-y-2"
+                            *ngIf="this.messageSignalsService.sessionGroups().past7Days.length > 0">
+                            <div class="px-2 text-sm text-neutral-500">7 ngày qua</div>
+                            <ul class="space-y-1">
+                                <li *ngFor="let s of this.messageSignalsService.sessionGroups().past7Days"
+                                    class="p-2 cursor-pointer rounded-lg hover:bg-neutral-100 flex items-center justify-between gap-2"
+                                    [ngClass]="{ 'bg-blue-100 text-blue-600': s.sessionId === messageSignalsService.activeSessionId() }">
+
+                                    <span class="truncate max-w-[180px] block" title="{{ s.label }}"
+                                        (click)="messageSignalsService.setActiveSession(s.sessionId)">
+                                        {{ s.label }}
+                                    </span>
+
+                                    <button nz-button nzType="text"
+                                        (click)="messageSignalsService.deleteSession(s.sessionId, $event)">
+                                        <nz-icon nzType="delete" nzTheme="outline"
+                                            class="text-neutral-400 hover:text-red-500" />
+                                    </button>
+                                </li>
+                            </ul>
+                        </li>
+
+                        <!-- Trước đó -->
+                        <li class="p-3 space-y-2" *ngIf="this.messageSignalsService.sessionGroups().older.length > 0">
+                            <div class="px-2 text-sm text-neutral-500">Trước đó</div>
+                            <ul class="space-y-1">
+                                <li *ngFor="let s of this.messageSignalsService.sessionGroups().older"
+                                    class="p-2 cursor-pointer rounded-lg hover:bg-neutral-100 flex items-center justify-between gap-2"
+                                    [ngClass]="{ 'bg-blue-100 text-blue-600': s.sessionId === messageSignalsService.activeSessionId() }">
+
+                                    <span class="truncate max-w-[180px] block" title="{{ s.label }}"
+                                        (click)="messageSignalsService.setActiveSession(s.sessionId)">
+                                        {{ s.label }}
+                                    </span>
+
+                                    <button nz-button nzType="text"
+                                        (click)="messageSignalsService.deleteSession(s.sessionId, $event)">
+                                        <nz-icon nzType="delete" nzTheme="outline"
+                                            class="text-neutral-400 hover:text-red-500" />
+                                    </button>
+                                </li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+
+            </div>
+        </div>
+    </nz-sider>
+    <nz-layout>
+        <router-outlet></router-outlet>
+    </nz-layout>
+</nz-layout>

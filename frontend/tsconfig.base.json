@@ -1,0 +1,33 @@
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "rootDir": ".",
+    "sourceMap": true,
+    "declaration": false,
+    "moduleResolution": "node",
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "importHelpers": true,
+    "target": "es2015",
+    "module": "esnext",
+    "lib": ["es2020", "dom"],
+    "skipLibCheck": true,
+    "skipDefaultLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@chat-scraper/api-gateway": [
+        "utils/repositories/api-gateway/src/index.ts"
+      ],
+      "@chat-scraper/box-chat": ["utils/components/box-chat/src/index.ts"],
+      "@chat-scraper/box-comments": [
+        "utils/components/box-comments/src/index.ts"
+      ],
+      "@chat-scraper/core": ["utils/core/src/index.ts"],
+      "@chat-scraper/environment": ["utils/environment/src/index.ts"],
+      "@chat-scraper/form-new-chat": [
+        "utils/components/form-new-chat/src/index.ts"
+      ]
+    }
+  },
+  "exclude": ["node_modules", "tmp"]
+}

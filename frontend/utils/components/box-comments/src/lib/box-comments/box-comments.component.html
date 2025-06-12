@@ -1,0 +1,57 @@
+
+<div class="overflow-auto h-[calc(100vh-64px)]">
+    <div class="list-posts">
+        <div class="post-item">
+            <div class="heading sticky top-0 bg-white z-10">
+                <div class="bg-neutral-100 py-2 px-4">
+                    <div class="flex space-x-2 place-items-center">
+                        <div>
+                            <nz-avatar nzSrc="https://mammy.vn/wp-content/uploads/2024/03/doandammobile.png.webp"></nz-avatar>
+                        </div>
+                        <div class="font-medium">
+                            Dầu Cá Hồi Bổ Não
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="list-comments p-4">
+                <div class="space-y-5">
+                    @for (item of scraperSignalService.allTiktokComments()?.data?.data; track $index) {
+                        <div>
+                            <div class="flex space-x-2">
+                                <div>
+                                    <nz-avatar nzIcon="user"
+                                        nzSrc="{{item.user.avatar_thumb.url_list[0]}}"></nz-avatar>
+                                </div>
+                                <div class="space-y-1 flex-auto">
+                                    <div class="flex place-content-between">
+                                        <div class="flex-auto font-medium">
+                                            <div>{{item.user.nickname}}</div>
+                                        </div>
+                                        <div class="text-neutral-500 text-sm">
+                                            <div>{{convertTime(item.create_time) | date:'dd/MM HH:mm:ss'}}</div>
+                                        </div>
+                                    </div>
+                                    <div class="text-neutral-500">
+                                        {{item.text}}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    
+                </div>
+            </div>
+        </div>
+        
+    </div>
+</div>
+<!-- <div class="grid place-content-center h-full">
+    <nz-empty [nzNotFoundContent]="contentTpl">
+        <ng-template #contentTpl>
+            <span class="text-neutral-500">
+                Không có dữ liệu
+            </span>
+        </ng-template>
+    </nz-empty>
+</div> -->

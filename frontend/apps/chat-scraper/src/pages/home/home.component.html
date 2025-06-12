@@ -1,0 +1,47 @@
+<div class="grid w-full content-between">
+    <div class="h-[calc(100vh-64px)]">
+        <nz-affix [nzOffsetTop]="0">
+            <nz-header class="border-b">
+                <div class="flex place-content-between">
+                    <div>
+                        <nz-icon class="trigger" [nzType]="isCollapsed ? 'menu-unfold' : 'menu-fold'"
+                            (click)="isCollapsed = !isCollapsed" />
+                    </div>
+                    <div>
+                        <nz-icon class="trigger" nzType="merge-cells" nzTheme="outline" />
+                    </div>
+                </div>
+            </nz-header>
+        </nz-affix>
+        <div class="flex place-content-between divide-x h-full overflow-hidden">
+            <div class="flex-auto grid content-between">
+                <div>
+                    <lib-box-chat />
+                </div>
+                <div>
+                    <nz-affix [nzOffsetBottom]="0">
+                        <nz-footer class="p-3 bg-white">
+                            <nz-form-control nzErrorTip="Please input your message!">
+                                <nz-input-group class="border-none bg-neutral-100 h-10 rounded-xl"
+                                    [nzSuffix]="sendButtonTemplate">
+                                    <input class="bg-neutral-100" type="text" nz-input placeholder="Type a message..."
+                                        [(ngModel)]="message" (keydown.enter)="sendMessage()" />
+                                </nz-input-group>
+
+                                <ng-template #sendButtonTemplate>
+                                    <span (click)="sendMessage()" class="cursor-pointer">
+                                        <nz-icon nzType="send" nzTheme="outline" />
+                                    </span>
+                                </ng-template>
+                            </nz-form-control>
+                        </nz-footer>
+                    </nz-affix>
+                </div>
+            </div>
+            <!-- <div class="w-96 bg-white">
+                <lib-box-comments />
+            </div> -->
+        </div>
+    </div>
+
+</div>

@@ -11,7 +11,7 @@ from langchain_core.messages import (
 from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import List, Literal, Union, Optional, Any
-
+from app.chatstore.redis_client import save_chat_to_vector
 
 class LanguageModelTextPart(BaseModel):
     type: Literal["text"]
@@ -142,6 +142,9 @@ class FrontendToolCall(BaseModel):
 
 
 class ChatRequest(BaseModel):
+    session_id: str  # 🔥 Bắt buộc có nếu muốn lưu vào RedisVL
+    user_id: Optional[str] = None
+    agent: Optional[str] = None
     system: Optional[str] = ""
     tools: Optional[List[FrontendToolCall]] = []
     messages: List[LanguageModelV1Message]
@@ -184,7 +187,16 @@ def add_langgraph_route(app: FastAPI, graph, path: str):
                             tool_controller = tool_calls_by_idx[chunk["index"]]
 
                         tool_controller.append_args_text(chunk["args"])
-
+        try:
+            await save_chat_to_vector(
+                agent=request.agent,
+                user_id=request.user_id,
+                session_id=request.session_id,
+                messages=inputs,
+            )
+        except Exception as e:
+            print(f"[RedisVL] Failed to save chat: {e}")
+            
         return DataStreamResponse(create_run(run))
 
     app.add_api_route(path, chat_completions, methods=["POST"])

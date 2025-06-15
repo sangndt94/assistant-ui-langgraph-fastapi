@@ -1,6 +1,5 @@
 import os
 from dotenv import load_dotenv
-from routes.history import register_history_routes
 
 load_dotenv()
 
@@ -8,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI
 from .langgraph.agent import assistant_ui_graph
 from .routes.add_langgraph_route import add_langgraph_route
-
+from .routes.history import build_history_router
 app = FastAPI()
 # cors
 app.add_middleware(
@@ -21,9 +20,9 @@ app.add_middleware(
 
 # Đăng ký route chat
 add_langgraph_route(app, assistant_ui_graph, "/api/chat")
-
+app.include_router(build_history_router("/api")) 
 # Đăng ký route history
-register_history_routes(app)
+# register_history_routes(app)
 
 if __name__ == "__main__":
     import uvicorn

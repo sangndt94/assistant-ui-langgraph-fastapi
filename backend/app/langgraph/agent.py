@@ -25,6 +25,7 @@ class AnyArgsSchema(BaseModel):
     # By not defining any fields and allowing extras,
     # this schema will accept any input passed in.
     class Config:
+        env_file = ".env"
         extra = "allow"
 
 

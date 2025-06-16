@@ -22,7 +22,7 @@ export class MessageSignalsService {
   readonly activeSessionId = computed(() => this.#activeSessionId());
   readonly #history = signal<ChatMessage[]>([]);
   readonly history = computed(() => this.#history());
-
+  readonly #isStreaming = signal(false);
   readonly #sessionGroups = signal<{
     today: any[];
     past7Days: any[];
@@ -134,60 +134,129 @@ export class MessageSignalsService {
     );
   }
 
+  private addUserMessage(message: ChatMessage) {
+    this.#history.set([...this.#history(), message]);
+  }
+
+  private updateLastAssistantMessage(text: string) {
+    const history = this.#history();
+    const last = history[history.length - 1];
+    if (last?.role === 'assistant') {
+      const updated: ChatMessage = {
+        ...last,
+        content: [{ type: 'text', text }] as MessageContent[]
+      };
+      this.#history.set([...history.slice(0, -1), updated]);
+    }
+  }
+
+  private ensureEmptyAssistantMessage(): void {
+    const history = this.#history();
+    const last = history[history.length - 1];
+    if (!last || last.role !== 'assistant') {
+      this.#history.set([
+        ...history,
+        {
+          role: 'assistant',
+          content: [{ type: 'text', text: '' }] as MessageContent[]
+        }
+      ]);
+    }
+  }
+
   sendMessageStream(sendMessageRs: SendMessageRequest): Observable<SendMessageResponse> {
+    if (this.#isStreaming()) return of({} as SendMessageResponse);
+    this.#isStreaming.set(true);
     this.#status.set('loading');
 
+    const userMessage = sendMessageRs.messages[sendMessageRs.messages.length - 1];
+    this.addUserMessage(userMessage);
+    this.ensureEmptyAssistantMessage();
+
     return this.#eventMessageResourceService.sendMessageStream(sendMessageRs).pipe(
-      tap((response: SendMessageResponse) => {
-        console.log("response", response);
+      tap({
+        next: (response: SendMessageResponse) => {
+          const contents = response.answer?.content ?? [];
 
-        const answer = response.answer || {
-          role: 'assistant' as const,
-          content: [{ type: 'text' as const, text: '' }]
-        };
+          for (const content of contents) {
+            if (content.type === 'tool-call') {
+              this.handleToolCall(content, sendMessageRs);
 
-        const toolCall = answer.content.find(item => item.type === 'tool-call');
-        if (toolCall) {
-          this.handleToolCall(toolCall, sendMessageRs);
-        } else {
-          const updatedHistory: ChatMessage[] = [
-            ...sendMessageRs.messages,
-            answer
-          ];
-          this.#history.set(updatedHistory);
-        }
+            } else if (content.type === 'tool-result') {
+              // Chỉ lưu tool-result vào history, KHÔNG updateLastAssistantMessage nữa
+              const toolMessage: ChatMessage = { role: 'tool', content: [content] };
+              this.#history.set([...this.#history(), toolMessage]);
 
-        this.#status.set('success');
-        this.#messageRs.set(response);
-      }),
-      catchError((err) => {
-        const failedHistory: ChatMessage[] = [
-          ...sendMessageRs.messages,
-          {
-            role: 'assistant',
-            content: [{ type: 'text', text: '⚠️ Gửi tin nhắn thất bại.' }]
+            } else if (content.type === 'text') {
+              // ⚠️ Để tránh đúp nếu BE đã format lại tool-result → hãy kiểm tra text này khác với tool-result
+              const last = this.#history()[this.#history().length - 1];
+              if (!(last?.role === 'assistant' && last.content[0]?.type === 'text' && last.content[0].text === content.text)) {
+                this.updateLastAssistantMessage(content.text!);
+              }
+            }
           }
-        ];
-        this.#history.set(failedHistory);
-        this.#status.set('error');
 
-        return of(err.error?.data || err.error || { error: true });
-      })
+          this.#status.set('success');
+          this.#messageRs.set(response);
+        },
+        error: (err) => {
+          this.#history.set([
+            ...this.#history(),
+            {
+              role: 'assistant',
+              content: [{ type: 'text', text: '⚠️ Gửi tin nhắn thất bại.' }]
+            } as ChatMessage
+          ]);
+          this.#status.set('error');
+        },
+        finalize: () => {
+          this.#isStreaming.set(false);
+        }
+      }),
+      // Hoặc đảm bảo chỉ lấy 1 giá trị duy nhất
+      // take(1)
     );
+  }
+
+  private prettifyKey(key: string): string {
+    return key
+      .replace(/_/g, ' ')
+      .replace(/(?:^|\s)\S/g, (c) => c.toUpperCase()); // Viết hoa chữ cái đầu
+  }
+
+  private isIsoDate(value: string): boolean {
+    return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z?$/.test(value);
+  }
+
+  private convertToolResultToText(result: any, toolName: string): string {
+    if (!result || typeof result !== 'object') return '[Không có dữ liệu từ tool]';
+
+    const entries = Object.entries(result);
+    return entries.map(([key, value]) => {
+      let label = this.prettifyKey(key);
+      let formattedValue = typeof value === 'number' && key.toLowerCase().includes('time')
+        ? new Date(value).toLocaleString()
+        : typeof value === 'string' && this.isIsoDate(value)
+          ? new Date(value).toISOString().replace('T', ' ').replace('Z', ' UTC')
+          : value;
+
+      return `${label}: ${formattedValue}`;
+    }).join('\n');
   }
 
   private handleToolCall(toolCall: MessageContent, sendMessageRs: SendMessageRequest): void {
     const { toolName, toolCallId, args } = toolCall;
 
     if (toolName === 'get_stock_price') {
-      // Công cụ backend, chờ BE trả về kết quả
+      // Trường hợp là tool backend → chờ backend trả về result (không xử lý ở đây)
       return;
     }
 
-    // Xử lý công cụ frontend (nếu có)
+    // Kiểm tra có phải tool frontend không
     const frontendTools = sendMessageRs.tools?.map(t => t.name) || [];
     if (frontendTools.includes(toolName!)) {
       const result = this.executeFrontendTool(toolName!, args);
+
       const toolResultMessage: ChatMessage = {
         role: 'tool' as const,
         content: [
@@ -201,6 +270,17 @@ export class MessageSignalsService {
         ]
       };
 
+      // ✅ Tạo luôn tin nhắn assistant dạng text để hiển thị
+      const formattedText = this.convertToolResultToText(result, toolName!);
+      const assistantMessage: ChatMessage = {
+        role: 'assistant',
+        content: [{ type: 'text', text: formattedText }] as MessageContent[]
+      };
+
+      // ✅ Cập nhật history luôn (tool + assistant text)
+      this.#history.set([...this.#history(), toolResultMessage, assistantMessage]);
+
+      // Nếu cần tiếp tục xử lý với tool-result → gửi tiếp cho backend
       const payload: SendMessageRequest = {
         system: sendMessageRs.system,
         tools: sendMessageRs.tools,
@@ -294,20 +374,44 @@ export class MessageSignalsService {
   loadHistory(sessionId: string, userId: string) {
     this.#status.set('loading');
 
-    return this.#eventMessageResourceService.fetchHistory({ session_id: sessionId, user_id: userId, "agent": "mammy_assistant" }).pipe(
+    return this.#eventMessageResourceService.fetchHistory({
+      session_id: sessionId,
+      user_id: userId,
+      agent: 'core_agent',
+    }).pipe(
       tap((res) => {
-        this.#history.set(res.history || []);
+        const allMessages: ChatMessage[] = [];
+
+        (res.results || []).forEach((entry: any) => {
+          try {
+            const parsed = JSON.parse(entry.text);
+            if (Array.isArray(parsed)) {
+              parsed.forEach((msg: any) => {
+                const converted: ChatMessage = {
+                  role: msg.role,
+                  content: msg.text // Gán trực tiếp vì đã đúng định dạng [{ type: 'text', text: '...' }]
+                };
+                allMessages.push(converted);
+              });
+            }
+          } catch (e) {
+            console.warn('Lỗi parse message:', e);
+          }
+        });
+
+        this.#history.set(allMessages);
         this.#activeSessionId.set(sessionId);
         this.#status.set('success');
       }),
       catchError((err) => {
-        console.log(err)
+        console.log(err);
         this.#status.set('error');
-        this.resetHistory()
+        this.resetHistory();
         return of(err.error?.data || err.error);
       })
     );
   }
+
 
   resetHistory() {
     this.#history.set([]);

@@ -7,7 +7,12 @@ from langchain_core.tools import BaseTool
 from pydantic import BaseModel
 from .tools import tools
 from .state import AgentState
+import os
 
+DEFAULT_SYSTEM_PROMPT = os.getenv(
+    "CORE_AGENT_SYSTEM_PROMPT",
+    "Bạn là trợ lý AI chính xác, ngắn gọn, lịch sự, không bịa đặt."
+)
 
 model = ChatOpenAI()
 
@@ -59,7 +64,14 @@ def get_tools(config):
 
 
 async def call_model(state, config):
-    system = config["configurable"]["system"]
+    def sanitize_prompt(fe_prompt: str, fallback: str) -> str:
+        if fe_prompt and len(fe_prompt.strip()) < 300:
+            return f"{fallback}\n{fe_prompt}".strip()
+        return fallback
+
+    system = sanitize_prompt(config["configurable"].get("system", ""), DEFAULT_SYSTEM_PROMPT)
+    print(f"[System Prompt Used]:\n{system}")
+    messages = [SystemMessage(content=system)] + state["messages"]
 
     messages = [SystemMessage(content=system)] + state["messages"]
     model_with_tools = model.bind_tools(get_tool_defs(config))

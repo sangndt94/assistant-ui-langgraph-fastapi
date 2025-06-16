@@ -37,6 +37,15 @@ export class HomeComponent {
   readonly messageSignalsService = inject(MessageSignalsService);
   readonly #router = inject(Router);
 
+  onInputChange(value: string): void {
+    this.message = value;
+  }
+
+  onEnter(event: Event): void {
+    const keyboardEvent = event as KeyboardEvent;
+    keyboardEvent.preventDefault();
+    this.sendMessage();
+  }
   onMessageSent(): void {
     const scrollContainer = document.querySelector('.chat-history');
     if (scrollContainer) {
@@ -60,13 +69,13 @@ export class HomeComponent {
       content: [{ type: 'text' as const, text: content } as MessageContent]
     };
 
-    // Cập nhật lịch sử lạc quan (optimistic update)
-    const optimisticHistory: ChatMessage[] = [
-      ...currentHistory,
-      newUserMessage,
-      { role: 'assistant' as const, content: [{ type: 'text' as const, text: '🤖 Đang trả lời...' } as MessageContent] }
-    ];
-    this.messageSignalsService.updateHistory(optimisticHistory);
+    // // Cập nhật lịch sử lạc quan (optimistic update)
+    // const optimisticHistory: ChatMessage[] = [
+    //   ...currentHistory,
+    //   newUserMessage,
+    //   { role: 'assistant' as const, content: [{ type: 'text' as const, text: '🤖 Đang trả lời...' } as MessageContent] }
+    // ];
+    // this.messageSignalsService.updateHistory(optimisticHistory);
 
     // Xử lý sessionId
     if (!sessionId) {
@@ -101,10 +110,10 @@ export class HomeComponent {
       //   }
       // ],
       tools: [],
-      messages: [...currentHistory, newUserMessage],
+      messages: [newUserMessage],
       user_id: userId as string,
       session_id: sessionId as string,
-      agent: 'mammy_assistant'
+      agent: 'core_agent'
     };
 
     // Gửi tin nhắn
@@ -113,10 +122,11 @@ export class HomeComponent {
       .subscribe({
         next: () => {
           this.onMessageSent();
+          setTimeout(() => {
+            this.message = '';
+          }, 300);
         }
       });
 
-    // Clear input
-    this.message = '';
   }
 }

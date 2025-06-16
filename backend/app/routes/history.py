@@ -10,41 +10,11 @@ from pydantic import BaseModel
 from redisvl.index import AsyncSearchIndex
 from redisvl.query import VectorQuery, FilterQuery
 from sentence_transformers import SentenceTransformer
+from chatstore.redis_client import REDIS_URL, AGENT_NAME, INDEX_NAME, KEY_PREFIX, EMBEDDING_DIM, _model as model, schema
 
-# --- Config ---
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
-INDEX_NAME = "chat_index"
-KEY_PREFIX = "chat_docs"
-VECTOR_DIM = 384
-model = SentenceTransformer("all-MiniLM-L6-v2")
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-schema = {
-    "index": {
-        "name": INDEX_NAME,
-        "prefix": KEY_PREFIX,
-    },
-    "fields": [
-        {"name": "id", "type": "text"},
-        {"name": "text", "type": "text"},
-        {"name": "agent", "type": "tag"},
-        {"name": "user_id", "type": "tag"},
-        {"name": "session_id", "type": "tag"},
-        {"name": "timestamp", "type": "numeric"},
-        {
-            "name": "embedding",
-            "type": "vector",
-            "attrs": {
-                "dims": VECTOR_DIM,
-                "distance_metric": "cosine",
-                "algorithm": "flat",
-                "datatype": "float32"
-            }
-        }
-    ]
-}
 
 def escape_tag_value(val: str) -> str:
     return re.sub(r'([{}\\()\[\]\s:;@\-])', r'\\\\\\1', val)

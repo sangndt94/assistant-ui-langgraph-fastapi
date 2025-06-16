@@ -25,7 +25,7 @@
                                 <nz-input-group class="border-none bg-neutral-100 h-10 rounded-xl"
                                     [nzSuffix]="sendButtonTemplate">
                                     <input class="bg-neutral-100" type="text" nz-input placeholder="Type a message..."
-                                        [(ngModel)]="message" (keydown.enter)="sendMessage()" />
+                                        [(ngModel)]="message" (keyup.enter)="sendMessage()" />
                                 </nz-input-group>
 
                                 <ng-template #sendButtonTemplate>

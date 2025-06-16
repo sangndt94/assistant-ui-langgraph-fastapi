@@ -11,27 +11,26 @@ from langchain_core.messages import (
 from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import List, Literal, Union, Optional, Any
-from app.chatstore.redis_client import save_chat_to_vector
+from app.chatstore.redis_client import save_chat_to_vector, async_search_index
+from redisvl.query import VectorQuery
+import json
 
 class LanguageModelTextPart(BaseModel):
     type: Literal["text"]
     text: str
     providerMetadata: Optional[Any] = None
 
-
 class LanguageModelImagePart(BaseModel):
     type: Literal["image"]
-    image: str  # Will handle URL or base64 string
+    image: str
     mimeType: Optional[str] = None
     providerMetadata: Optional[Any] = None
 
-
 class LanguageModelFilePart(BaseModel):
     type: Literal["file"]
-    data: str  # URL or base64 string
+    data: str
     mimeType: str
     providerMetadata: Optional[Any] = None
-
 
 class LanguageModelToolCallPart(BaseModel):
     type: Literal["tool-call"]
@@ -40,13 +39,11 @@ class LanguageModelToolCallPart(BaseModel):
     args: Any
     providerMetadata: Optional[Any] = None
 
-
 class LanguageModelToolResultContentPart(BaseModel):
     type: Literal["text", "image"]
     text: Optional[str] = None
     data: Optional[str] = None
     mimeType: Optional[str] = None
-
 
 class LanguageModelToolResultPart(BaseModel):
     type: Literal["tool-result"]
@@ -57,11 +54,9 @@ class LanguageModelToolResultPart(BaseModel):
     content: Optional[List[LanguageModelToolResultContentPart]] = None
     providerMetadata: Optional[Any] = None
 
-
 class LanguageModelSystemMessage(BaseModel):
     role: Literal["system"]
     content: str
-
 
 class LanguageModelUserMessage(BaseModel):
     role: Literal["user"]
@@ -69,16 +64,13 @@ class LanguageModelUserMessage(BaseModel):
         Union[LanguageModelTextPart, LanguageModelImagePart, LanguageModelFilePart]
     ]
 
-
 class LanguageModelAssistantMessage(BaseModel):
     role: Literal["assistant"]
     content: List[Union[LanguageModelTextPart, LanguageModelToolCallPart]]
 
-
 class LanguageModelToolMessage(BaseModel):
     role: Literal["tool"]
     content: List[LanguageModelToolResultPart]
-
 
 LanguageModelV1Message = Union[
     LanguageModelSystemMessage,
@@ -86,7 +78,6 @@ LanguageModelV1Message = Union[
     LanguageModelAssistantMessage,
     LanguageModelToolMessage,
 ]
-
 
 def convert_to_langchain_messages(
     messages: List[LanguageModelV1Message],
@@ -107,11 +98,10 @@ def convert_to_langchain_messages(
             result.append(HumanMessage(content=content))
 
         elif msg.role == "assistant":
-            # Handle both text and tool calls
             text_parts = [
                 p for p in msg.content if isinstance(p, LanguageModelTextPart)
             ]
-            text_content = " ".join(p.text for p in text_parts)
+            text_content = "".join(p.text for p in text_parts)  # gộp không có dấu cách
             tool_calls = [
                 {
                     "id": p.toolCallId,
@@ -134,29 +124,66 @@ def convert_to_langchain_messages(
 
     return result
 
-
 class FrontendToolCall(BaseModel):
     name: str
     description: Optional[str] = None
     parameters: dict[str, Any]
 
-
 class ChatRequest(BaseModel):
-    session_id: str  # 🔥 Bắt buộc có nếu muốn lưu vào RedisVL
+    session_id: str
     user_id: Optional[str] = None
     agent: Optional[str] = None
     system: Optional[str] = ""
     tools: Optional[List[FrontendToolCall]] = []
     messages: List[LanguageModelV1Message]
 
+async def load_chat_history(agent: str, user_id: str, session_id: str) -> str:
+    filters = [
+        f"@agent:{{{agent}}}",
+        f"@user_id:{{{user_id}}}",
+        f"@session_id:{{{session_id}}}"
+    ]
+    query = VectorQuery(
+        vector=[0.0] * 384,
+        vector_field_name="embedding",
+        return_fields=["text"],
+        num_results=1,
+        return_score=False
+    )
+    query.filter.expression = " ".join(filters)
+
+    results = await async_search_index.query(query)
+    if results and "text" in results[0]:
+        return results[0]["text"]
+    return "[]"
 
 def add_langgraph_route(app: FastAPI, graph, path: str):
     async def chat_completions(request: ChatRequest):
-        inputs = convert_to_langchain_messages(request.messages)
+        history_json = await load_chat_history(request.agent, request.user_id, request.session_id)
+
+        history_messages: List[BaseMessage] = []
+        if history_json:
+            try:
+                history_raw = json.loads(history_json)
+                for item in history_raw:
+                    if item["role"] == "user":
+                        history_messages.append(HumanMessage(content=item["text"]))
+                    elif item["role"] == "assistant":
+                        text = item["text"]
+                        if isinstance(text, list):
+                            text = "".join(part.get("text", "") for part in text if part.get("type") == "text")
+                        history_messages.append(AIMessage(content=text))
+            except Exception as e:
+                print(f"[Redis] Failed to load history: {e}")
+
+        new_inputs = convert_to_langchain_messages(request.messages)
+        inputs = history_messages + new_inputs
 
         async def run(controller: RunController):
             tool_calls = {}
             tool_calls_by_idx = {}
+            full_messages: List[BaseMessage] = inputs.copy()
+            ai_response_buffer = ""
 
             async for msg, metadata in graph.astream(
                 {"messages": inputs},
@@ -168,35 +195,39 @@ def add_langgraph_route(app: FastAPI, graph, path: str):
                 },
                 stream_mode="messages",
             ):
+                # ✅ Nhận kết quả từ tool, KHÔNG stream về FE
                 if isinstance(msg, ToolMessage):
-                    tool_controller = tool_calls[msg.tool_call_id]
-                    tool_controller.set_result(msg.content)
+                    tool_controller = tool_calls.get(msg.tool_call_id)
+                    if tool_controller:
+                        tool_controller.set_result(msg.content)
+                    full_messages.append(msg)
 
-                if isinstance(msg, AIMessageChunk) or isinstance(msg, AIMessage):
+                # ✅ Chỉ stream phản hồi TỰ NHIÊN cuối cùng từ AI
+                if isinstance(msg, AIMessageChunk):
                     if msg.content:
                         controller.append_text(msg.content)
+                        ai_response_buffer += msg.content
 
-                    for chunk in msg.tool_call_chunks:
-                        if not chunk["index"] in tool_calls_by_idx:
-                            tool_controller = await controller.add_tool_call(
-                                chunk["name"], chunk["id"]
-                            )
-                            tool_calls_by_idx[chunk["index"]] = tool_controller
-                            tool_calls[chunk["id"]] = tool_controller
-                        else:
-                            tool_controller = tool_calls_by_idx[chunk["index"]]
+                    # ✅ KHÔNG append tool_call_chunks về controller
+                    # vì bạn không muốn thấy `b:` và `a:` đoạn JSON
 
-                        tool_controller.append_args_text(chunk["args"])
-        try:
-            await save_chat_to_vector(
-                agent=request.agent,
-                user_id=request.user_id,
-                session_id=request.session_id,
-                messages=inputs,
-            )
-        except Exception as e:
-            print(f"[RedisVL] Failed to save chat: {e}")
-            
+                    # → Gỡ bỏ toàn bộ đoạn xử lý tool_call_chunks
+                    # hoặc giữ lại nếu sau này bạn cần dùng vào debug nội bộ
+
+            # ✅ Sau khi stream xong mới ghi lại lịch sử
+            if ai_response_buffer:
+                full_messages.append(AIMessage(content=ai_response_buffer))
+
+            try:
+                await save_chat_to_vector(
+                    agent=request.agent,
+                    user_id=request.user_id,
+                    session_id=request.session_id,
+                    messages=full_messages,
+                )
+            except Exception as e:
+                print(f"[RedisVL] Failed to save chat: {e}")
+
         return DataStreamResponse(create_run(run))
 
     app.add_api_route(path, chat_completions, methods=["POST"])

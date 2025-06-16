@@ -103,7 +103,7 @@ export class MessageResourceService extends ApiResourceService {
 
     return this.httpClient.request<any>(
       'post',
-      `${this.basePath}/api/products`,
+      `${this.basePath}/api/chat/get`,
       {
         body: payload,
         withCredentials: this.configuration.withCredentials,

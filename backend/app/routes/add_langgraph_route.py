@@ -11,9 +11,9 @@ from langchain_core.messages import (
 from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import List, Literal, Union, Optional, Any
-from app.chatstore.redis_client import save_chat_to_vector, async_search_index
+from app.chatstore.redis_client import save_chat_to_vector, async_search_index, load_chat_history
 from redisvl.query import VectorQuery
-import json
+import json, re
 
 class LanguageModelTextPart(BaseModel):
     type: Literal["text"]
@@ -137,25 +137,13 @@ class ChatRequest(BaseModel):
     tools: Optional[List[FrontendToolCall]] = []
     messages: List[LanguageModelV1Message]
 
-async def load_chat_history(agent: str, user_id: str, session_id: str) -> str:
-    filters = [
-        f"@agent:{{{agent}}}",
-        f"@user_id:{{{user_id}}}",
-        f"@session_id:{{{session_id}}}"
-    ]
-    query = VectorQuery(
-        vector=[0.0] * 384,
-        vector_field_name="embedding",
-        return_fields=["text"],
-        num_results=1,
-        return_score=False
-    )
-    query.filter.expression = " ".join(filters)
+def try_unescape(text: str) -> str:
+    """Giải mã các ký tự escape như \\n, \\" nếu tồn tại."""
+    try:
+        return json.loads(f'"{text}"')
+    except Exception:
+        return text
 
-    results = await async_search_index.query(query)
-    if results and "text" in results[0]:
-        return results[0]["text"]
-    return "[]"
 
 def add_langgraph_route(app: FastAPI, graph, path: str):
     async def chat_completions(request: ChatRequest):
@@ -197,22 +185,18 @@ def add_langgraph_route(app: FastAPI, graph, path: str):
             ):
                 # ✅ Nhận kết quả từ tool, KHÔNG stream về FE
                 if isinstance(msg, ToolMessage):
+                    cleaned_tool_content = try_unescape(msg.content)
                     tool_controller = tool_calls.get(msg.tool_call_id)
                     if tool_controller:
-                        tool_controller.set_result(msg.content)
-                    full_messages.append(msg)
+                        tool_controller.set_result(cleaned_tool_content)
+                    full_messages.append(ToolMessage(content=cleaned_tool_content, tool_call_id=msg.tool_call_id))
 
                 # ✅ Chỉ stream phản hồi TỰ NHIÊN cuối cùng từ AI
                 if isinstance(msg, AIMessageChunk):
                     if msg.content:
-                        controller.append_text(msg.content)
-                        ai_response_buffer += msg.content
-
-                    # ✅ KHÔNG append tool_call_chunks về controller
-                    # vì bạn không muốn thấy `b:` và `a:` đoạn JSON
-
-                    # → Gỡ bỏ toàn bộ đoạn xử lý tool_call_chunks
-                    # hoặc giữ lại nếu sau này bạn cần dùng vào debug nội bộ
+                        formatted_content = try_unescape(msg.content)
+                        controller.append_text(formatted_content)
+                        ai_response_buffer += formatted_content
 
             # ✅ Sau khi stream xong mới ghi lại lịch sử
             if ai_response_buffer:

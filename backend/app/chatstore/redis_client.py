@@ -72,18 +72,7 @@ async def save_chat_to_vector(agent, user_id, session_id, messages, embedding_fn
     doc_id = f"{agent}:{user_id}:{session_id}"
     custom_key = f"{KEY_PREFIX}:{doc_id}"
 
-    # 1️⃣ Tải hội thoại cũ nếu có
-    try:
-        existing = await async_redis_client.hget(custom_key, "text")
-        if existing:
-            old_messages = json.loads(existing)
-        else:
-            old_messages = []
-    except Exception as e:
-        print(f"[Redis] Failed to load old messages: {e}")
-        old_messages = []
-
-    # 2️⃣ Chuyển `messages` mới thành JSON list
+    # 1️⃣ Không đọc lại Redis, chỉ ghi đè bằng messages hiện tại
     new_message_texts = []
     for m in messages:
         if isinstance(m, HumanMessage):
@@ -91,10 +80,9 @@ async def save_chat_to_vector(agent, user_id, session_id, messages, embedding_fn
         elif isinstance(m, AIMessage):
             new_message_texts.append({"role": "assistant", "type": "text", "text": [{"type": "text", "text": m.content}]})
 
-    all_messages = old_messages + new_message_texts
-    full_text = json.dumps(all_messages, ensure_ascii=False)
+    full_text = json.dumps(new_message_texts, ensure_ascii=False)
 
-    # 3️⃣ Ghi đè Redis (full đoạn hội thoại)
+    # 2️⃣ Ghi đè Redis (full đoạn hội thoại hiện tại)
     embedding = await embedding_fn(full_text)
     embedding_bytes = np.array(embedding, dtype=np.float32).tobytes()
 
@@ -106,7 +94,10 @@ async def save_chat_to_vector(agent, user_id, session_id, messages, embedding_fn
         "session_id": session_id,
         "embedding": embedding_bytes
     }]
-    return await async_search_index.load(data, keys=[custom_key])
+
+    await async_search_index.load(data, keys=[custom_key])
+    await async_redis_client.hset(custom_key, mapping={"text": full_text})
+    return {"status": "ok", "session_id": session_id}
 
 # Search
 async def search_chat_history(query_text, agent=None, user_id=None, session_id=None, k=3):
@@ -152,3 +143,37 @@ async def delete_chat_index():
 async def get_index_stats():
     await ensure_index_exists()
     return {"exists": await async_search_index.exists(), "name": INDEX_NAME, "prefix": KEY_PREFIX}
+
+
+async def load_chat_history_vecter(agent: str, user_id: str, session_id: str) -> str:
+    filters = [
+        f"@agent:{{{agent}}}",
+        f"@user_id:{{{user_id}}}",
+        f"@session_id:{{{session_id}}}"
+    ]
+    query = VectorQuery(
+        vector=[0.0] * 384,
+        vector_field_name="embedding",
+        return_fields=["text"],
+        num_results=1,
+        return_score=False
+    )
+    query.filter.expression = " ".join(filters)
+
+    results = await async_search_index.query(query)
+    if results and "text" in results[0]:
+        return results[0]["text"]
+    return "[]"
+
+async def load_chat_history(agent: str, user_id: str, session_id: str) -> str:
+    redis_key = f"{KEY_PREFIX}:{agent}:{user_id}:{session_id}"
+    try:
+        value = await async_redis_client.hget(redis_key, "text")
+        if value:
+            print(f"[Redis] ✅ Loaded history from key: {redis_key}")
+        else:
+            print(f"[Redis] ⚠️ No history found for key: {redis_key}")
+        return value or "[]"
+    except Exception as e:
+        print(f"[Redis] ❌ Failed to load chat history: {e}")
+        return "[]"

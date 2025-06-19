@@ -27,28 +27,25 @@ export class BoxChatComponent {
       .join('')
       .trim();
   }
+parseSimpleMarkdown(text: string | undefined | null): string {
+  if (!text) return '';
 
-  parseSimpleMarkdown(text: string | undefined | null): string {
-    if (!text) {
-      console.warn('parseSimpleMarkdown received undefined or null text');
-      return '';
-    }
-    try {
-      // Làm sạch văn bản đề phòng dữ liệu chưa được xử lý
-      let cleanedText = text
-        .replace(/0:\"([^"]*?)\"\n?/g, '$1') // Loại bỏ 0:"..."
-        .replace(/\\u([0-9A-Fa-f]{4})/g, (_, code) => String.fromCharCode(parseInt(code, 16))); // Giải mã UTF-8
+  try {
+    let cleanedText = text
+      .replace(/\\n/g, '\n') // CHUYỂN \\n thành \n thật
+      .replace(/0:\"([^"]*?)\"\n?/g, '$1')
+      .replace(/\\u([0-9A-Fa-f]{4})/g, (_, code) => String.fromCharCode(parseInt(code, 16)));
 
-      // Áp dụng markdown
-      return cleanedText
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        .replace(/\[([^\]]*)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
-    } catch (err) {
-      console.error('Error parsing markdown:', err);
-      return text;
-    }
+    return cleanedText
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/\[([^\]]*)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+      .replace(/\n/g, '<br>'); // Cuối cùng chuyển \n thật thành <br>
+  } catch (err) {
+    console.error('Error parsing markdown:', err);
+    return text;
   }
+}
 
   ngAfterViewInit(): void {
     this.scrollToBottom();

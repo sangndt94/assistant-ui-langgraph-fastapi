@@ -8,21 +8,22 @@
     </div>
 
     <!-- Assistant Message -->
-<div *ngIf="message.role === 'assistant'" class="flex justify-start">
-  <div class="bg-gray-100 text-gray-800 rounded-xl px-4 py-2 max-w-[80%] whitespace-pre-line">
-    <ng-container *ngIf="!getMessageText(message.content); else realAnswer">
-      🤖
-      <span class="inline-flex gap-1">
-        <span class="animate-bounce">.</span>
-        <span class="animate-bounce [animation-delay:0.2s]">.</span>
-        <span class="animate-bounce [animation-delay:0.4s]">.</span>
-      </span>
-    </ng-container>
-    <ng-template #realAnswer>
-      <span [innerHTML]="parseSimpleMarkdown(getMessageText(message.content))"></span>
-    </ng-template>
-  </div>
-</div>
+    <div *ngIf="message.role === 'assistant'" class="flex justify-start">
+      <div class="bg-gray-100 text-gray-800 rounded-xl px-4 py-2 max-w-[80%] whitespace-pre-line">
+        <ng-container *ngIf="!getMessageText(message.content); else realAnswer">
+          🤖
+          <span class="inline-flex gap-1">
+            <span class="animate-bounce">.</span>
+            <span class="animate-bounce [style.animation-delay:'0.2s']">.</span>
+            <span class="animate-bounce [style.animation-delay:'0.4s']">.</span>
+          </span>
+        </ng-container>
+        <ng-template #realAnswer>
+          <!-- Sử dụng hàm xử lý trực tiếp -->
+          <span [innerHTML]="parseSimpleMarkdown(getMessageText(message.content))"></span>
+        </ng-template>
+      </div>
+    </div>
 
     <!-- Tool Result -->
     <div *ngIf="message.role === 'tool'" class="flex justify-start">

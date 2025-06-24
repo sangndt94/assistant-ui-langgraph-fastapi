@@ -17,7 +17,7 @@ import { Observable } from 'rxjs';
 
 import { ApiResourceService } from './apiResourceService';
 import { TikTokCommentRs } from '../model/tiktok/tiktokCommentRs';
-import { SendMessageRequest, SendMessageResponse } from '../model/message/sendMessageRq';
+import { DeleteChatRequest, SendMessageRequest, SendMessageResponse } from '../model/message/sendMessageRq';
 
 
 @Injectable({
@@ -112,4 +112,23 @@ export class MessageResourceService extends ApiResourceService {
     );
   }
 
+  public deleteChatSession(
+    payload: DeleteChatRequest,
+    observe: 'body' = 'body',
+    reportProgress?: boolean
+  ): Observable<any> {
+    let headers = this.defaultHeaders;
+
+    return this.httpClient.request<any>(
+      'delete',
+      `${this.basePath}/api/chat/delete`,
+      {
+        body: payload,
+        withCredentials: this.configuration.withCredentials,
+        headers: headers,
+        observe: observe,
+        reportProgress: reportProgress,
+      }
+    );
+  }
 }

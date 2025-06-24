@@ -4,7 +4,7 @@ import { ApiStatus } from '../model/api-status.model';
 import { TikTokCommentRs } from '../model/tiktok/tiktokCommentRs';
 import { TikTokScraperRq } from '../model/tiktok/tiktokScraperRq';
 import { MessageResourceService } from '../api/MessageResource.service';
-import { ChatMessage, MessageContent, SendMessageRequest, SendMessageResponse } from '../model/message/sendMessageRq';
+import { ChatMessage, DeleteChatRequest, MessageContent, SendMessageRequest, SendMessageResponse } from '../model/message/sendMessageRq';
 import { Router } from '@angular/router';
 
 @Injectable({
@@ -398,20 +398,40 @@ export class MessageSignalsService {
   deleteSession(sessionId: string, event: Event): void {
     event.stopPropagation(); // tránh trigger setActiveSession
 
-    // Xóa cookie
-    document.cookie = `session_${sessionId}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/`;
+    const userId = this.getCookie('mammy_user_id'); // hoặc lấy từ service/token
+    const agent = 'core_agent'; // hoặc lấy từ config/router
 
-    // Nếu session bị xoá là session hiện tại
-    if (this.activeSessionId() === sessionId) {
-      this.setActiveSession('');
-      this.#router.navigate(['/']); // hoặc về trang mặc định
-    }
+    // Gọi API để xóa session từ Redis backend
+    const payload: DeleteChatRequest = {
+      session_id: sessionId,
+      user_id: userId!,
+      agent: agent,
+    };
 
-    // Cập nhật lại danh sách
-    const updatedGroups = this.getSessionGroupsFromRaw(
-      this.getAllSessionCookies()
-    );
-    this.setGroup(updatedGroups);
+    this.#eventMessageResourceService.deleteChatSession(payload).subscribe({
+      next: (res) => {
+        console.log('✅ Đã xóa Redis session:', res);
+
+        // Xóa cookie local
+        document.cookie = `session_${sessionId}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/`;
+
+        // Nếu session bị xoá là session hiện tại
+        if (this.activeSessionId() === sessionId) {
+          this.setActiveSession('');
+          this.#router.navigate(['/']); // hoặc về trang mặc định
+        }
+
+        // Cập nhật lại danh sách
+        const updatedGroups = this.getSessionGroupsFromRaw(
+          this.getAllSessionCookies()
+        );
+        this.setGroup(updatedGroups);
+      },
+      error: (err) => {
+        console.error('❌ Lỗi khi xóa session:', err);
+        // Optionally show toast error UI
+      },
+    });
   }
 
   loadHistory(sessionId: string, userId: string) {

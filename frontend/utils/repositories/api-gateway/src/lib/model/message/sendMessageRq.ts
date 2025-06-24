@@ -36,3 +36,9 @@ export interface SendMessageResponse {
   answer: ChatMessage;
   [key: string]: any; // nếu có thêm field khác
 }
+
+export interface DeleteChatRequest {
+  session_id: string;
+  user_id: string;
+  agent: string;
+}

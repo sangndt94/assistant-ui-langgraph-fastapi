@@ -27,26 +27,26 @@ export class BoxChatComponent {
       .join('')
       .trim();
   }
-parseSimpleMarkdown(text: string | undefined | null): string {
-  if (!text) return '';
+  parseSimpleMarkdown(text: string | undefined | null): string {
+    if (!text) return '';
 
-  try {
-    let cleanedText = text
-      .replace(/\\n/g, '\n') // CHUYỂN \\n thành \n thật
-      .replace(/0:\"([^"]*?)\"\n?/g, '$1')
-      .replace(/\\u([0-9A-Fa-f]{4})/g, (_, code) => String.fromCharCode(parseInt(code, 16)));
+    try {
+      let cleanedText = text
+        .replace(/\\n/g, '\n')
+        .replace(/0:\"([^"]*?)\"\n?/g, '$1')
+        .replace(/\\u([0-9A-Fa-f]{4})/g, (_, code) => String.fromCharCode(parseInt(code, 16)));
 
-    return cleanedText
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/\[([^\]]*)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
-      .replace(/\n/g, '<br>'); // Cuối cùng chuyển \n thật thành <br>
-  } catch (err) {
-    console.error('Error parsing markdown:', err);
-    return text;
+      return cleanedText
+        .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="rounded-lg shadow max-w-full my-2" />') // ✅ ảnh
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/\[([^\]]*)\]\(([^)]+)\)/g, '<a href="$2" class="text-blue-600 underline">$1</a>')
+        .replace(/\n/g, '<br>');
+    } catch (err) {
+      console.error('Error parsing markdown:', err);
+      return text;
+    }
   }
-}
-
   ngAfterViewInit(): void {
     this.scrollToBottom();
   }

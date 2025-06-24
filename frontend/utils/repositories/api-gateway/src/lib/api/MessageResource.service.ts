@@ -58,7 +58,7 @@ export class MessageResourceService extends ApiResourceService {
       }).then(response => {
         const reader = response.body?.getReader();
         const decoder = new TextDecoder('utf-8');
-        let fullText = '';
+        let fullText = ''; // 👈 cần khôi phục
 
         const read = () => {
           reader!.read().then(({ value, done }) => {
@@ -68,22 +68,20 @@ export class MessageResourceService extends ApiResourceService {
             }
 
             const chunk = decoder.decode(value, { stream: true });
-            fullText += chunk;
+            fullText += chunk; // 👈 quan trọng
 
-            // Emit realtime response mỗi lần có update
-            const response: SendMessageResponse = {
-              answer: {
-                role: 'assistant',
-                content: [
-                  {
-                    type: 'text',
-                    text: fullText
-                  }
-                ]
-              }
-            };
+            try {
+              const parsed = JSON.parse(chunk);
+              subscriber.next(parsed); // JSON structured → emit nguyên
+            } catch (_) {
+              subscriber.next({
+                answer: {
+                  role: 'assistant',
+                  content: [{ type: 'text', text: fullText }]
+                }
+              });
+            }
 
-            subscriber.next(response);
             read();
           }).catch(err => subscriber.error(err));
         };

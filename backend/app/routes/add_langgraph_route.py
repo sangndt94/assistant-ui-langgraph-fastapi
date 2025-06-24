@@ -185,12 +185,34 @@ def add_langgraph_route(app: FastAPI, graph, path: str):
             ):
                 # ✅ Nhận kết quả từ tool, KHÔNG stream về FE
                 if isinstance(msg, ToolMessage):
-                    cleaned_tool_content = try_unescape(msg.content)
-                    tool_controller = tool_calls.get(msg.tool_call_id)
-                    if tool_controller:
-                        tool_controller.set_result(cleaned_tool_content)
-                    full_messages.append(ToolMessage(content=cleaned_tool_content, tool_call_id=msg.tool_call_id))
+                    print("[TOOL] Received ToolMessage:", msg)
 
+                    raw_tool_result = metadata.get("tool_result") if metadata else None
+                    structured_content = None
+
+                    if raw_tool_result:
+                        try:
+                            tool_result_data = json.loads(raw_tool_result) if isinstance(raw_tool_result, str) else raw_tool_result
+                            if isinstance(tool_result_data, dict) and "content" in tool_result_data:
+                                structured_content = tool_result_data["content"]
+                        except Exception as e:
+                            print(f"[Parse ToolResult] Failed to parse tool content: {e}")
+
+                    # ✅ Luôn tạo payload đầy đủ, fallback nếu structured_content = None
+                    tool_result_payload = {
+                        "toolCallId": msg.tool_call_id,
+                        "toolName": getattr(msg, "name", "unknown_tool"),
+                        "type": "tool-result",
+                        "result": try_unescape(msg.content),
+                        "content": structured_content or []  # fallback an toàn
+                    }
+
+                    full_messages.append(
+                        ToolMessage(
+                            content=json.dumps(tool_result_payload, ensure_ascii=False),
+                            tool_call_id=msg.tool_call_id,
+                        )
+                    )
                 # ✅ Chỉ stream phản hồi TỰ NHIÊN cuối cùng từ AI
                 if isinstance(msg, AIMessageChunk):
                     if msg.content:

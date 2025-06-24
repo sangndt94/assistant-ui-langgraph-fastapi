@@ -179,20 +179,63 @@ export class MessageSignalsService {
           const contents = response.answer?.content ?? [];
 
           for (const content of contents) {
-            if (content.type === 'tool-call') {
-              this.handleToolCall(content, sendMessageRs);
+            switch (content.type) {
+              case 'tool-call':
+                this.handleToolCall(content, sendMessageRs);
+                break;
 
-            } else if (content.type === 'tool-result') {
-              // Chỉ lưu tool-result vào history, KHÔNG updateLastAssistantMessage nữa
-              const toolMessage: ChatMessage = { role: 'tool', content: [content] };
-              this.#history.set([...this.#history(), toolMessage]);
+              case 'tool-result':
+                let rawContent = content.result?.content;
 
-            } else if (content.type === 'text') {
-              // ⚠️ Để tránh đúp nếu BE đã format lại tool-result → hãy kiểm tra text này khác với tool-result
-              const last = this.#history()[this.#history().length - 1];
-              if (!(last?.role === 'assistant' && last.content[0]?.type === 'text' && last.content[0].text === content.text)) {
-                this.updateLastAssistantMessage(content.text!);
+                // Nếu content là string JSON → cần parse
+                if (typeof rawContent === 'string') {
+                  try {
+                    rawContent = JSON.parse(rawContent);
+                  } catch (err) {
+                    console.warn('⚠️ Không parse được tool-result.content:', err);
+                  }
+                }
+
+                const structured = Array.isArray(rawContent)
+                  ? rawContent
+                  : [{
+                    type: 'text',
+                    text: this.convertToolResultToText(content.result, content.toolName || '')
+                  }];
+
+                this.#history.set([...this.#history(), {
+                  role: 'tool',
+                  content: structured
+                }]);
+                break;
+
+              case 'image': {
+                const history = this.#history();
+                const last = history[history.length - 1];
+
+                if (last?.role === 'tool') {
+                  // ✅ Gộp thêm vào content cũ
+                  const updated = {
+                    ...last,
+                    content: [...last.content, content]
+                  };
+                  this.#history.set([...history.slice(0, -1), updated]);
+                } else {
+                  // 🆕 Nếu chưa có tool-message nào, tạo mới
+                  this.#history.set([...history, {
+                    role: 'tool',
+                    content: [content]
+                  }]);
+                }
+                break;
               }
+
+              case 'text':
+                const last = this.#history()[this.#history().length - 1];
+                if (!(last?.role === 'assistant' && last.content[0]?.text === content.text)) {
+                  this.updateLastAssistantMessage(content.text!);
+                }
+                break;
             }
           }
 

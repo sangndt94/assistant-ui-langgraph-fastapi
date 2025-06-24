@@ -1,16 +1,24 @@
-from langchain_core.tools import tool
+
+
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+from langchain_core.tools import tool
 
+# -----------------------------
+# Helpers
+# -----------------------------
 now = datetime.now(timezone.utc)
 fmt = lambda dt: dt.strftime("%Y-%m-%dT%H:%M:%SZ")
 
+def parse_iso(iso_str):
+    try:
+        return datetime.fromisoformat(iso_str.replace("Z", "+00:00"))
+    except:
+        return None
+
 # -----------------------------
-# Mock data
+# Mock Data (injected separately to reduce clutter)
 # -----------------------------
-
-
-
 universal_mock_data = {
     "OBJ-001": {
         "id": "OBJ-001",
@@ -25,7 +33,12 @@ universal_mock_data = {
         "created_at": fmt(now - timedelta(days=7)),
         "updated_at": fmt(now),
         "tags": ["fragile", "dry"],
-        "metadata": {"supplier": "Vinacell", "batch_no": "B202406"}
+        "metadata": {"supplier": "Vinacell", "batch_no": "B202406"},
+        "images": [
+            "https://picsum.photos/id/237/200/300",
+            "https://picsum.photos/id/100/200/300",
+            "https://picsum.photos/id/101/200/300"
+        ]
     },
     "OBJ-002": {
         "id": "OBJ-002",
@@ -40,7 +53,12 @@ universal_mock_data = {
         "created_at": fmt(now - timedelta(days=3)),
         "updated_at": fmt(now),
         "tags": ["electronics"],
-        "metadata": {"brand": "Anker", "model": "A8813"}
+        "metadata": {"brand": "Anker", "model": "A8813"},
+        "images": [
+            "https://picsum.photos/id/237/200/300",
+            "https://picsum.photos/id/100/200/300",
+            "https://picsum.photos/id/101/200/300"
+        ]
     },
     "OBJ-003": {
         "id": "OBJ-003",
@@ -55,7 +73,12 @@ universal_mock_data = {
         "created_at": fmt(now - timedelta(days=2)),
         "updated_at": fmt(now - timedelta(days=1)),
         "tags": ["urgent", "COD"],
-        "metadata": {"customer": "Nguyễn Văn A", "phone": "0901234567"}
+        "metadata": {"customer": "Nguyễn Văn A", "phone": "0901234567"},
+        "images": [
+            "https://picsum.photos/id/237/200/300",
+            "https://picsum.photos/id/100/200/300",
+            "https://picsum.photos/id/101/200/300"
+        ]
     },
     "OBJ-004": {
         "id": "OBJ-004",
@@ -70,7 +93,12 @@ universal_mock_data = {
         "created_at": fmt(now - timedelta(days=180)),
         "updated_at": fmt(now - timedelta(days=3)),
         "tags": ["it", "equipment"],
-        "metadata": {"serial_no": "DXPS1588VN", "assigned_to": "trungnt"}
+        "metadata": {"serial_no": "DXPS1588VN", "assigned_to": "trungnt"},
+        "images": [
+            "https://picsum.photos/id/237/200/300",
+            "https://picsum.photos/id/100/200/300",
+            "https://picsum.photos/id/101/200/300"
+        ]
     },
     "OBJ-005": {
         "id": "OBJ-005",
@@ -85,7 +113,12 @@ universal_mock_data = {
         "created_at": fmt(now - timedelta(days=90)),
         "updated_at": fmt(now - timedelta(days=60)),
         "tags": ["finance", "confidential"],
-        "metadata": {"format": "PDF", "author": "ketoan01"}
+        "metadata": {"format": "PDF", "author": "ketoan01"},
+        "images": [
+            "https://picsum.photos/id/237/200/300",
+            "https://picsum.photos/id/100/200/300",
+            "https://picsum.photos/id/101/200/300"
+        ]
     },
     "OBJ-006": {
         "id": "OBJ-006",
@@ -100,7 +133,12 @@ universal_mock_data = {
         "created_at": fmt(now - timedelta(hours=5)),
         "updated_at": fmt(now - timedelta(hours=1)),
         "tags": ["fragile", "liquid"],
-        "metadata": {"batch": "LV0624", "expiry": "2025-06-01"}
+        "metadata": {"batch": "LV0624", "expiry": "2025-06-01"},
+        "images": [
+            "https://picsum.photos/id/237/200/300",
+            "https://picsum.photos/id/100/200/300",
+            "https://picsum.photos/id/101/200/300"
+        ]
     },
     "OBJ-0019": {
         "id": "OBJ-006",
@@ -115,7 +153,12 @@ universal_mock_data = {
         "created_at": fmt(now - timedelta(hours=5)),
         "updated_at": fmt(now - timedelta(hours=1)),
         "tags": ["fragile", "liquid"],
-        "metadata": {"batch": "LV0624", "expiry": "2025-06-01"}
+        "metadata": {"batch": "LV0624", "expiry": "2025-06-01"},
+        "images": [
+            "https://picsum.photos/id/237/200/300",
+            "https://picsum.photos/id/100/200/300",
+            "https://picsum.photos/id/101/200/300"
+        ]
     },
     "OBJ-007": {
         "id": "OBJ-007",
@@ -130,7 +173,12 @@ universal_mock_data = {
         "created_at": fmt(now - timedelta(days=1)),
         "updated_at": fmt(now),
         "tags": ["international"],
-        "metadata": {"tracking": "DHL789SG", "receiver": "LEGO Vietnam"}
+        "metadata": {"tracking": "DHL789SG", "receiver": "LEGO Vietnam"},
+        "images": [
+            "https://picsum.photos/id/237/200/300",
+            "https://picsum.photos/id/100/200/300",
+            "https://picsum.photos/id/101/200/300"
+        ]
     },
     "OBJ-008": {
         "id": "OBJ-008",
@@ -145,7 +193,12 @@ universal_mock_data = {
         "created_at": fmt(now - timedelta(days=10)),
         "updated_at": fmt(now - timedelta(days=2)),
         "tags": ["storage", "it"],
-        "metadata": {"brand": "Samsung", "model": "980 Pro"}
+        "metadata": {"brand": "Samsung", "model": "980 Pro"},
+        "images": [
+            "https://picsum.photos/id/237/200/300",
+            "https://picsum.photos/id/100/200/300",
+            "https://picsum.photos/id/101/200/300"
+        ]
     },
     "OBJ-009": {
         "id": "OBJ-009",
@@ -160,7 +213,12 @@ universal_mock_data = {
         "created_at": fmt(now - timedelta(days=5)),
         "updated_at": fmt(now),
         "tags": ["food"],
-        "metadata": {"supplier": "Mondelez", "expiry": "2025-01-15"}
+        "metadata": {"supplier": "Mondelez", "expiry": "2025-01-15"},
+        "images": [
+            "https://picsum.photos/id/237/200/300",
+            "https://picsum.photos/id/100/200/300",
+            "https://picsum.photos/id/101/200/300"
+        ]
     },
     "OBJ-010": {
         "id": "OBJ-010",
@@ -175,108 +233,137 @@ universal_mock_data = {
         "created_at": fmt(now - timedelta(days=3)),
         "updated_at": fmt(now - timedelta(days=1)),
         "tags": ["inventory", "internal"],
-        "metadata": {"approved_by": None, "version": 2}
+        "metadata": {"approved_by": None, "version": 2},
+        "images": [
+            "https://picsum.photos/id/237/200/300",
+            "https://picsum.photos/id/100/200/300",
+            "https://picsum.photos/id/101/200/300"
+        ]
     }
 }
 
 
+
 # -----------------------------
-# Tìm theo ID
+# Utility Find Functions
 # -----------------------------
 def find_by_id(query: str) -> Optional[dict]:
-    return universal_mock_data.get(query)
+    return universal_mock_data.get(query.strip().upper())
 
-# -----------------------------
-# Tìm theo tên gần đúng (insensitive)
-# -----------------------------
-def find_by_name(name_query: str) -> Optional[dict]:
-    name_query = name_query.lower()
-    for item in universal_mock_data.values():
-        if name_query in item.get("name", "").lower():
-            return item
-    return None
+def find_by_name(query: str) -> Optional[dict]:
+    q = query.lower()
+    return next((item for item in universal_mock_data.values() if q in item.get("name", "").lower()), None)
 
-# -----------------------------
-# Tìm tất cả khớp tên gần đúng (dùng cho list)
-# -----------------------------
 def find_all_by_name(query: str) -> list[dict]:
-    query = query.lower()
-    return [item for item in universal_mock_data.values() if query in item.get("name", "").lower()]
+    q = query.lower()
+    return [item for item in universal_mock_data.values() if q in item.get("name", "").lower()]
 
-# -----------------------------
-# Tìm theo các field khác như location, type, tags, metadata
-# -----------------------------
+def find_by_type(type_query: str) -> list[dict]:
+    t = type_query.lower()
+    return [item for item in universal_mock_data.values() if item.get("type", "").lower() == t]
+
 def find_by_general_fields(query: str) -> list[dict]:
-    query = query.lower()
+    q = query.lower()
     matched = []
     for item in universal_mock_data.values():
         if (
-            query in item["id"].lower()
-            or query in item["name"].lower()
-            or query in item.get("location", "").lower()
-            or query in item.get("type", "").lower()
-            or any(query in tag.lower() for tag in item.get("tags", []))
-            or any(query in str(v).lower() for v in item.get("metadata", {}).values())
+            q in item["id"].lower()
+            or q in item["name"].lower()
+            or q in item.get("location", "").lower()
+            or q in item.get("type", "").lower()
+            or any(q in tag.lower() for tag in item.get("tags", []))
+            or any(q in str(v).lower() for v in item.get("metadata", {}).values())
         ):
             matched.append(item)
     return matched
 
 # -----------------------------
-# Chuẩn hóa phản hồi mô tả
+# Format Output Functions
 # -----------------------------
 def format_description(item: dict) -> str:
-    desc = f"""
-Pallet có mã ID {item['id']} chứa {item['name']} đang được lưu trữ tại {item['location']}.
-Số lượng: {item['quantity']} {item['unit']}, trọng lượng: {item['weight']} kg.
-Kích thước: {item['dimensions']['length']}x{item['dimensions']['width']}x{item['dimensions']['height']}cm.
-"""
+    desc = (
+        f"Pallet có mã ID {item['id']} chứa {item['name']} đang được lưu trữ tại {item['location']}.\n"
+        f"Số lượng: {item['quantity']} {item['unit']}, trọng lượng: {item['weight']} kg.\n"
+        f"Kích thước: {item['dimensions']['length']}x{item['dimensions']['width']}x{item['dimensions']['height']}cm."
+    )
     if item.get("metadata"):
         metadata = ", ".join(f"{k.capitalize()}: {v}" for k, v in item["metadata"].items())
-        desc += f"Thông tin thêm: {metadata}.\n"
+        desc += f"\nThông tin thêm: {metadata}."
     if item.get("updated_at"):
-        try:
-            updated = datetime.fromisoformat(item["updated_at"].replace("Z", "+00:00"))
-            desc += f"Cập nhật lần cuối vào ngày {updated.strftime('%d/%m/%Y')}"
-        except:
-            pass
-    return desc.strip()
+        updated = parse_iso(item["updated_at"])
+        if updated:
+            desc += f"\nCập nhật lần cuối vào ngày {updated.strftime('%d/%m/%Y')}."
+    return desc
 
 # -----------------------------
-# Tool chi tiết cho 1 item (theo ID hoặc tên)
+# Tool: get_pallet_info
+# Output: dict { result: str, content: list[{type, text/data}] }
 # -----------------------------
-@tool(return_direct=True)
-def get_pallet_info(query: str) -> str:
+@tool
+def get_pallet_info(query: str) -> dict:
     """Tìm và mô tả thông tin một pallet hoặc vật phẩm trong kho."""
     item = find_by_id(query) or find_by_name(query)
     if not item:
-        return f"Không tìm thấy thông tin nào khớp với: {query}"
-    return format_description(item)
+        return {
+            "result": "Không tìm thấy thông tin nào khớp với: " + query,
+            "content": [{"type": "text", "text": f"❌ Không tìm thấy thông tin với: {query}"}]
+        }
+
+    content = [{"type": "text", "text": format_description(item)}]
+
+    if item.get("images"):
+        content.append({"type": "text", "text": f"Hình ảnh của pallet {item['id']}:"})
+        content.extend({"type": "image", "data": url} for url in item["images"])
+
+    return {"result": "OK", "content": content}
 
 # -----------------------------
-# Tool tổng hợp tìm kiếm nhiều item
+# Tool: get_inventory_info
+# Output: string mô tả danh sách item
 # -----------------------------
 @tool(return_direct=True)
 def get_inventory_info(query: str) -> str:
-    """Tìm kiếm thông tin kho theo ID, tên sản phẩm, vị trí (location), loại (type), tags hoặc metadata."""
+    """Tìm kiếm thông tin kho theo ID, tên, vị trí, loại, tag hoặc metadata."""
     matched = find_by_general_fields(query)
     if not matched:
         return f"Không tìm thấy vật phẩm nào liên quan đến: '{query}'"
 
-    results = [f"Tìm thấy {len(matched)} vật phẩm liên quan đến '{query}':\n"]
+    lines = [f"Tìm thấy {len(matched)} vật phẩm liên quan đến '{query}':\n"]
     for item in matched:
         updated_str = ""
-        if item.get("updated_at"):
-            try:
-                updated_dt = datetime.fromisoformat(item["updated_at"].replace("Z", "+00:00"))
-                updated_str = f", cập nhật: {updated_dt.strftime('%d/%m/%Y')}"
-            except:
-                pass
-        results.append(
+        updated_dt = parse_iso(item.get("updated_at"))
+        if updated_dt:
+            updated_str = f", cập nhật: {updated_dt.strftime('%d/%m/%Y')}"
+
+        lines.append(
             f"- {item['name']} (Mã: {item['id']}, Vị trí: {item['location']}, SL: {item['quantity']} {item['unit']}{updated_str})"
         )
-    return "\n".join(results)
+    return "\n".join(lines)
 
 # -----------------------------
-# Đăng ký tool
+# Tool: get_all_pallets
+# Output: dict content với mô tả + ảnh của tất cả pallet
 # -----------------------------
-tools = [get_pallet_info, get_inventory_info]
+@tool
+def get_all_pallets() -> dict:
+    """Trả về toàn bộ các pallet trong kho cùng hình ảnh."""
+    pallets = find_by_type("pallet")
+    if not pallets:
+        return {
+            "result": "Không tìm thấy pallet nào.",
+            "content": [{"type": "text", "text": "❌ Không có pallet nào trong kho."}]
+        }
+
+    contents = []
+    for pallet in pallets:
+        contents.append({"type": "text", "text": format_description(pallet)})
+        if pallet.get("images"):
+            contents.append({"type": "text", "text": f"Hình ảnh của pallet {pallet['id']}:"})
+            contents.extend({"type": "image", "data": url} for url in pallet["images"])
+
+    return {"result": f"Tìm thấy {len(pallets)} pallet.", "content": contents}
+
+# -----------------------------
+# Register tools
+# -----------------------------
+tools = [get_pallet_info, get_inventory_info, get_all_pallets]

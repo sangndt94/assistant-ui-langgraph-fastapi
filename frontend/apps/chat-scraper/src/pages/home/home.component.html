@@ -1,47 +1,82 @@
 <div class="grid w-full content-between">
-    <div class="h-[calc(100vh-64px)]">
-        <nz-affix [nzOffsetTop]="0">
-            <nz-header class="border-b">
-                <div class="flex place-content-between">
-                    <div>
-                        <nz-icon class="trigger" [nzType]="isCollapsed ? 'menu-unfold' : 'menu-fold'"
-                            (click)="isCollapsed = !isCollapsed" />
-                    </div>
-                    <div>
-                        <nz-icon class="trigger" nzType="merge-cells" nzTheme="outline" />
-                    </div>
-                </div>
-            </nz-header>
-        </nz-affix>
-        <div class="flex place-content-between divide-x h-full overflow-hidden">
-            <div class="flex-auto grid content-between">
-                <div>
-                    <lib-box-chat />
-                </div>
-                <div>
-                    <nz-affix [nzOffsetBottom]="0">
-                        <nz-footer class="p-3 bg-white">
-                            <nz-form-control nzErrorTip="Please input your message!">
-                                <nz-input-group class="border-none bg-neutral-100 h-10 rounded-xl"
-                                    [nzSuffix]="sendButtonTemplate">
-                                    <input class="bg-neutral-100" type="text" nz-input placeholder="Type a message..."
-                                        [(ngModel)]="message" (keyup.enter)="sendMessage()" />
-                                </nz-input-group>
-
-                                <ng-template #sendButtonTemplate>
-                                    <span (click)="sendMessage()" class="cursor-pointer">
-                                        <nz-icon nzType="send" nzTheme="outline" />
-                                    </span>
-                                </ng-template>
-                            </nz-form-control>
-                        </nz-footer>
-                    </nz-affix>
-                </div>
-            </div>
-            <!-- <div class="w-96 bg-white">
-                <lib-box-comments />
-            </div> -->
+  <div class="h-[calc(100vh-64px)]">
+    <!-- HEADER -->
+    <nz-affix [nzOffsetTop]="0">
+      <nz-header class="border-b">
+        <div class="flex place-content-between">
+          <div>
+            <nz-icon
+              class="trigger"
+              [nzType]="isCollapsed ? 'menu-unfold' : 'menu-fold'"
+              (click)="isCollapsed = !isCollapsed"
+            ></nz-icon>
+          </div>
+          <div>
+            <nz-icon class="trigger" nzType="merge-cells" nzTheme="outline"></nz-icon>
+          </div>
         </div>
-    </div>
+      </nz-header>
+    </nz-affix>
 
+    <!-- MAIN CONTENT -->
+    <div class="flex place-content-between divide-x h-full overflow-hidden">
+      <div class="flex-auto grid content-between">
+        <!-- Chat area -->
+        <div>
+          <lib-box-chat />
+        </div>
+
+        <!-- FOOTER -->
+        <div>
+          <nz-affix [nzOffsetBottom]="0">
+            <nz-footer class="p-3 bg-white border-t space-y-2">
+
+              <!-- Ảnh preview nếu có -->
+              <div *ngIf="imageData" class="mb-1">
+                <img
+                  [src]="imageData"
+                  alt="preview"
+                  class="max-h-[120px] rounded shadow"
+                />
+              </div>
+
+              <!-- Input + Buttons -->
+              <div class="flex items-center bg-neutral-100 rounded-xl px-3 py-2 gap-2">
+                <!-- Upload ảnh -->
+                <label class="cursor-pointer">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    (change)="onImageSelected($event)"
+                  />
+                  <nz-icon nzType="picture" nzTheme="outline" class="text-xl text-blue-600"></nz-icon>
+                </label>
+
+                <!-- Input -->
+                <input
+                  class="flex-grow bg-neutral-100 border-none focus:outline-none focus:ring-0"
+                  nz-input
+                  type="text"
+                  placeholder="Type a message..."
+                  [(ngModel)]="message"
+                  (keyup.enter)="sendMessage()"
+                />
+
+                <!-- Nút gửi -->
+                <button
+                  nz-button
+                  nzType="default"
+                  nzShape="circle"
+                  (click)="sendMessage()"
+                >
+                  <nz-icon nzType="send" nzTheme="outline"></nz-icon>
+                </button>
+              </div>
+            </nz-footer>
+          </nz-affix>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>

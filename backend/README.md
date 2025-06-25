@@ -120,6 +120,12 @@ poetry install
 poetry run python -m app.server
 Server chạy tại: http://localhost:8000
 
+poetry run uvicorn app.server:app --reload
+poetry run dev
+
+# kiểm tra index
+FT.INFO universal_object_index
+
 ✅ 3. CHẠY FRONTEND (Next.js + assistant-ui)
 bash
 Copy

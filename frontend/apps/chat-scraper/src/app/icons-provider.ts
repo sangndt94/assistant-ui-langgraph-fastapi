@@ -31,12 +31,20 @@ import {
   SettingOutline,
   SendOutline,
   MergeCellsOutline,
-  SplitCellsOutline
+  SplitCellsOutline,
+  CameraOutline,
+  VideoCameraOutline,
+  PictureOutline,
+  VideoCameraAddOutline,
 } from '@ant-design/icons-angular/icons';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 
 
 const icons = [
+  CameraOutline,
+  VideoCameraOutline,
+  PictureOutline,
+  VideoCameraAddOutline,
   MergeCellsOutline,
   SplitCellsOutline,
   SendOutline,

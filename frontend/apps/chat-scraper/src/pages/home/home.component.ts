@@ -12,6 +12,10 @@ import { FormsModule } from '@angular/forms';
 import { MessageSignalsService } from '@chat-scraper/api-gateway';
 import { Router } from '@angular/router';
 import { ChatMessage, MessageContent, SendMessageRequest } from 'utils/repositories/api-gateway/src/lib/model/message/sendMessageRq';
+import { CommonModule } from '@angular/common';
+import { NZ_ICONS } from 'ng-zorro-antd/icon';
+import { CameraOutline, SendOutline } from '@ant-design/icons-angular/icons';
+
 @Component({
   selector: 'app-home',
   imports: [
@@ -24,14 +28,20 @@ import { ChatMessage, MessageContent, SendMessageRequest } from 'utils/repositor
     BoxChatComponent,
     // BoxCommentsComponent,
     FormsModule,
+    CommonModule
   ],
   templateUrl: './home.component.html',
   styleUrl: './home.component.css',
+  providers: [
+    { provide: NZ_ICONS, useValue: [CameraOutline, SendOutline] }
+  ]
 })
 export class HomeComponent {
   isCollapsed = false;
   message = '';
   // history: [string, string][] = [];
+  imageData: string | null = null;
+
 
   constructor(private http: HttpClient) { }
   readonly messageSignalsService = inject(MessageSignalsService);
@@ -52,6 +62,22 @@ export class HomeComponent {
       setTimeout(() => {
         scrollContainer.scrollTop = scrollContainer.scrollHeight;
       }, 50);
+    }
+  }
+
+
+  onImageSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files[0]) {
+      const file = input.files[0];
+      const reader = new FileReader();
+
+      reader.onload = () => {
+        this.imageData = reader.result as string; // base64
+        this.sendMessage(); // gửi luôn nếu bạn muốn
+      };
+
+      reader.readAsDataURL(file);
     }
   }
 

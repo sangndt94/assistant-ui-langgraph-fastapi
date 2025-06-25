@@ -23,6 +23,7 @@ EMBEDDING_DIM = int(os.getenv("EMBEDDING_DIM", "384"))
 INDEX_NAME = os.getenv("INDEX_NAME", f"{AGENT_NAME}_index")
 KEY_PREFIX = os.getenv("KEY_PREFIX", f"{AGENT_NAME}_docs")
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
+TOOL_KEY_PREFIX = os.getenv("TOOL_KEY_PREFIX", "core_agent:data:tool:")
 _model = SentenceTransformer(EMBEDDING_MODEL)
 
 # RedisVL schema definition
@@ -86,16 +87,19 @@ async def save_chat_to_vector(agent, user_id, session_id, messages, embedding_fn
     embedding = await embedding_fn(full_text)
     embedding_bytes = np.array(embedding, dtype=np.float32).tobytes()
 
-    data = [{
+    def clean_redis_doc(doc: dict) -> dict:
+        return {k: ("" if v is None else v) for k, v in doc.items()}
+
+    clean_data = [clean_redis_doc({
         "id": doc_id,
         "text": full_text,
         "agent": agent,
         "user_id": user_id,
         "session_id": session_id,
         "embedding": embedding_bytes
-    }]
+    })]
 
-    await async_search_index.load(data, keys=[custom_key])
+    await async_search_index.load(clean_data, keys=[custom_key])
     await async_redis_client.hset(custom_key, mapping={"text": full_text})
     return {"status": "ok", "session_id": session_id}
 
@@ -177,3 +181,56 @@ async def load_chat_history(agent: str, user_id: str, session_id: str) -> str:
     except Exception as e:
         print(f"[Redis] ❌ Failed to load chat history: {e}")
         return "[]"
+
+def load_uploaded_tools_from_redis() -> dict:
+    """
+    Load all RedisVL documents with prefix 'core_agent:data:tool:' and convert them into structured Python dict.
+    Avoid decoding binary fields by using a temporary Redis connection with decode_responses=False.
+    """
+    raw_client = Redis.from_url(REDIS_URL, decode_responses=False)
+    keys = raw_client.keys(f"{TOOL_KEY_PREFIX}*")
+    print("kjdahsdjklashdlkashdlkashdlkashdlkashdlkashdlkashdlkashdlkashdklashdlkashdlkashdlkashdlksahdlksahdlksahdlkas")
+    result = {}
+
+    for key in keys:
+        doc_raw = raw_client.hgetall(key)
+        if not doc_raw:
+            continue
+
+        doc = {}
+        for k, v in doc_raw.items():
+            k = k.decode() if isinstance(k, bytes) else k
+            if k == "embedding":
+                continue  # skip binary field
+            try:
+                v = v.decode() if isinstance(v, bytes) else v
+                doc[k] = v
+            except Exception:
+                print(f"❌ Failed decoding field {k}")
+                continue
+
+        try:
+            result[doc["id"]] = {
+                "id": doc["id"],
+                "name": doc.get("name"),
+                "type": doc.get("type"),
+                "status": doc.get("status"),
+                "location": doc.get("location"),
+                "quantity": float(doc.get("quantity", 0)),
+                "unit": doc.get("unit"),
+                "weight": float(doc.get("weight", 0)),
+                "dimensions": {
+                    "length": float(doc.get("dim_length", 0)),
+                    "width": float(doc.get("dim_width", 0)),
+                    "height": float(doc.get("dim_height", 0)),
+                },
+                "created_at": doc.get("created_at"),
+                "updated_at": doc.get("updated_at"),
+                "tags": doc.get("tags", "").split(",") if doc.get("tags") else [],
+                "metadata": json.loads(doc.get("metadata", "{}")),
+                "images": json.loads(doc.get("images", "[]")),
+            }
+        except Exception as e:
+            print(f"❌ Failed to parse key {key}: {e}")
+
+    return result

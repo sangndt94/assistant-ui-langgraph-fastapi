@@ -23,7 +23,8 @@ EMBEDDING_DIM = int(os.getenv("EMBEDDING_DIM", "384"))
 INDEX_NAME = os.getenv("INDEX_NAME", f"{AGENT_NAME}_index")
 KEY_PREFIX = os.getenv("KEY_PREFIX", f"{AGENT_NAME}_docs")
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
-TOOL_KEY_PREFIX = os.getenv("TOOL_KEY_PREFIX", "core_agent:data:tool:")
+TOOL_KEY_PREFIX = 'core_agent:data:claims:'
+# TOOL_KEY_PREFIX = os.getenv("TOOL_KEY_PREFIX", "core_agent:data:tool:")
 _model = SentenceTransformer(EMBEDDING_MODEL)
 
 # RedisVL schema definition
@@ -184,7 +185,7 @@ async def load_chat_history(agent: str, user_id: str, session_id: str) -> str:
 
 def load_uploaded_tools_from_redis() -> dict:
     """
-    Load all RedisVL documents with prefix 'core_agent:data:tool:' and convert them into structured Python dict.
+    Load all RedisVL documents with prefix 'core_agent:data:claims:' and convert them into structured Python dict.
     Avoid decoding binary fields by using a temporary Redis connection with decode_responses=False.
     """
     raw_client = Redis.from_url(REDIS_URL, decode_responses=False)
